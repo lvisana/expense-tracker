@@ -1,26 +1,87 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <Header />
+  <div class="container">
+    <Balance :total="total" />
+    <IncomeExpenses :income="+income" :expenses="+expenses" />
+    <TransactionList
+      :transactions="transactions"
+      @transactionDeleted="handleTransactionDeleted"
+    />
+    <AddTransaction @transactionSubmitted="handleTransactionSubmitted" />
+  </div>
 </template>
 
-<script>
-import HelloWorld from './components/HelloWorld.vue'
+<script setup>
+import Header from "./components/Header.vue";
+import Balance from "./components/Balance.vue";
+import IncomeExpenses from "./components/IncomeExpenses.vue";
+import TransactionList from "./components/TransactionList.vue";
+import AddTransaction from "./components/AddTransaction.vue";
 
-export default {
-  name: 'App',
-  components: {
-    HelloWorld
+import { ref, computed, onMounted } from "vue";
+import { useToast } from "vue-toastification";
+
+const toast = useToast();
+
+const transactions = ref([]);
+
+onMounted(() => {
+  const savedTransactions = JSON.parse(localStorage.getItem("transactions"));
+
+  if (savedTransactions) {
+    transactions.value = savedTransactions;
   }
-}
+});
+
+const total = computed(() => {
+  return transactions.value.reduce((acc, trans) => {
+    return acc + trans.amount;
+  }, 0);
+});
+
+const income = computed(() => {
+  return transactions.value
+    .filter((trans) => trans.amount > 0)
+    .reduce((acc, trans) => {
+      return acc + trans.amount;
+    }, 0)
+    .toFixed(2);
+});
+
+const expenses = computed(() => {
+  return transactions.value
+    .filter((trans) => trans.amount < 0)
+    .reduce((acc, trans) => {
+      return acc + trans.amount;
+    }, 0)
+    .toFixed(2);
+});
+
+const handleTransactionSubmitted = (transactionData) => {
+  transactions.value.push({
+    id: generateUniqueId(),
+    text: transactionData.text,
+    amount: transactionData.amount,
+  });
+  savedTransactionsToLocalStorage();
+
+  toast.success("Transaction added");
+};
+
+const generateUniqueId = () => {
+  return Math.floor(Math.random() * 10000000);
+};
+
+const handleTransactionDeleted = (id) => {
+  transactions.value = transactions.value.filter((trans) => trans.id !== id);
+
+  savedTransactionsToLocalStorage();
+  toast.success("Transaction deleted");
+};
+
+const savedTransactionsToLocalStorage = () => {
+  localStorage.setItem("transactions", JSON.stringify(transactions.value));
+};
 </script>
 
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-</style>
+<style></style>
